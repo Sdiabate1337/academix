@@ -1,0 +1,200 @@
+// datasource configuration for PostgreSQL
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// generator for Prisma Client
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Enum definitions for controlled values
+enum AttendanceStatus {
+  Present
+  Absent
+}
+
+enum FinancialRecordType {
+  Payment
+  Fee
+  Scholarship
+}
+
+enum UserRole {
+  Director
+  FinancialOfficer
+  Teacher
+  Censor
+  Surveillant
+}
+
+enum PaymentStatus {
+  Pending
+  Completed
+  Failed
+}
+
+// Administration Service Models
+model User {
+  id          Int        @id @default(autoincrement())
+  name        String
+  email       String     @unique
+  password    String
+  role        UserRole
+  school      School     @relation("SchoolUsers", fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId    Int
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  lastLogin   DateTime?
+  isActive    Boolean     @default(true)
+  classes     Class[]     @relation("ClassTeachers")
+}
+
+model Role {
+  id          Int       @id @default(autoincrement())
+  name        String
+  permissions Json
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model School {
+  id                Int         @id @default(autoincrement())
+  name              String
+  history           String?
+  slogan            String?
+  organigram        Json
+  directorImg       String?
+  directorMessage   String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  numberOfStudents  Int
+  sexDistribution   Json
+  users             User[]      @relation("SchoolUsers")
+  students          Student[]   @relation("SchoolStudents")
+  classes           Class[]     @relation("SchoolClasses")
+  events            Event[]     @relation("SchoolEvents")
+  photos            Photo[]     @relation("SchoolPhotos")
+  fees              Fee[]       @relation("SchoolFees")
+}
+
+model FinancialRecord {
+  id             Int                 @id @default(autoincrement())
+  amount         Float
+  type           FinancialRecordType
+  description    String?
+  student        Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId      Int
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  paymentStatus  PaymentStatus
+  datePaid       DateTime?
+  fee            Fee?                @relation(fields: [feeId], references: [id], onDelete: SetNull)
+  feeId          Int?
+}
+
+model Fee {
+  id            Int       @id @default(autoincrement())
+  name          String
+  amount        Float
+  dueDate       DateTime
+  school        School    @relation("SchoolFees", fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId      Int
+  isMandatory   Boolean
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  financialRecords FinancialRecord[]
+}
+
+model Student {
+  id              Int               @id @default(autoincrement())
+  matriculation   String            @unique
+  firstName       String
+  lastName        String
+  sex             String
+  dateOfBirth     DateTime
+  gradeLevel      String
+  school          School            @relation("SchoolStudents", fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId        Int
+  parent          Parent            @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  parentId        Int
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  attendance      Attendance[]
+  financialRecords FinancialRecord[]
+  grades          Grade[]
+  classes         Class[]           @relation("ClassStudents")
+}
+
+model Parent {
+  id         Int       @id @default(autoincrement())
+  firstName  String
+  lastName   String
+  phone      String
+  email      String?
+  address    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  students   Student[]
+}
+
+model Attendance {
+  id        Int             @id @default(autoincrement())
+  date      DateTime
+  status    AttendanceStatus
+  student   Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId Int
+  createdAt DateTime        @default(now())
+}
+
+model Grade {
+  id        Int      @id @default(autoincrement())
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId Int
+  subject   String
+  grade     Float
+  term      String
+  createdAt DateTime @default(now())
+}
+
+// Class Management Models
+model Class {
+  id         Int        @id @default(autoincrement())
+  name       String
+  school     School     @relation("SchoolClasses", fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId   Int
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  students   Student[]  @relation("ClassStudents")
+  teachers   User[]     @relation("ClassTeachers")
+}
+
+// Showcase Website Models
+model Event {
+  id          Int      @id @default(autoincrement())
+  name        String
+  date        DateTime
+  description String?
+  school      School   @relation("SchoolEvents", fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId    Int
+  createdAt   DateTime @default(now())
+}
+
+model Photo {
+  id        Int      @id @default(autoincrement())
+  url       String
+  caption   String?
+  school    School   @relation("SchoolPhotos", fields: [schoolId], references: [id], onDelete: Cascade)
+  schoolId  Int
+  createdAt DateTime @default(now())
+}
+
+// Contact Us Management Model
+model Contact {
+  id          Int       @id @default(autoincrement())
+  name        String
+  email       String
+  message     String
+  createdAt   DateTime  @default(now())
+}
